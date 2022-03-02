@@ -1,6 +1,20 @@
 #![allow(non_snake_case)]
 use crate::*;
 
+/*
+ + 1 - Определение класса героя/еероятности и прочий полиш
+2 - Либа нира
+3 - Отделить золото и фишки
+4 - Ввести статус "вы открыты для нападений"
+ + 5 - Правильно генерироровать персонажей (основной стат начинается от стамины->силы->ловкости->инты
+6 -  при генерации персонажей тоже стараемся распределять так)
+7 - Продавать персонажей (скейлить продажу от общего павера кармана с героями)
+8 - Продавать ловушки (скейлить продажу от общего павера кармана с героями)
+*/
+/*
+cargo build --all --target wasm32-unknown-unknown --release
+cp target/wasm32-unknown-unknown/release/tribe_terra.wasm res/tribe_terra.wasm && near dev-deploy res/tribe_terra.wasm
+*/
 #[derive(Default, BorshDeserialize, BorshSerialize, Serialize)]
 pub struct Fillable {
     pub current: u16,
@@ -99,15 +113,16 @@ impl Hero {
         seed = seed + minStat - vitality;
         let strength = rand_range(1, seed, seedOffset + 1);
         seed = seed + minStat - strength;
-        let agility = rand_range(1, seed, seedOffset + 2);
-        seed = seed + minStat - agility;
-        let intelligence = seed;
+        let intelligence = rand_range(1, seed, seedOffset + 2);
+        seed = seed + minStat - intelligence;
+        let agility = seed;
 
-        let class = if vitality > strength && vitality > agility && vitality > intelligence {
+        let class = 
+        if vitality >= strength && vitality >= agility && vitality >= intelligence {
             0
-        } else if strength > agility && strength > intelligence {
+        } else if strength >= agility && strength >= intelligence {
             1
-        } else if agility > intelligence {
+        } else if agility >= intelligence {
             2
         } else {
             3
