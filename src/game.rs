@@ -2,18 +2,15 @@
 use crate::*;
 
 /*
- + 1 - Определение класса героя/еероятности и прочий полиш
-2 - Либа нира
-3 - Отделить золото и фишки
-4 - Ввести статус "вы открыты для нападений"
- + 5 - Правильно генерироровать персонажей (основной стат начинается от стамины->силы->ловкости->инты
-6 -  при генерации персонажей тоже стараемся распределять так)
-7 - Продавать персонажей (скейлить продажу от общего павера кармана с героями)
-8 - Продавать ловушки (скейлить продажу от общего павера кармана с героями)
-*/
-/*
 cargo build --all --target wasm32-unknown-unknown --release
 cp target/wasm32-unknown-unknown/release/tribe_terra.wasm res/tribe_terra.wasm && near dev-deploy res/tribe_terra.wasm
+
+near view dev-1649212878940-76503390717322 get_user_heroes '{"account_id": "www0rker.testnet"}'
+near view dev-1649212878940-76503390717322 hero_by_id '{"id": 1}'
+
+near call dev-1649212878940-76503390717322 add_to_stat '{"id": 1, "stat": "vitality"}' --accountId 'www0rker.testnet'
+near call dev-1649212878940-76503390717322 init --accountId 'www0rker.testnet'
+
 */
 #[derive(Default, BorshDeserialize, BorshSerialize, Serialize)]
 pub struct Fillable {
@@ -22,11 +19,23 @@ pub struct Fillable {
 }
 
 #[derive(Default, BorshDeserialize, BorshSerialize, Serialize)]
+pub struct Fillable32 {
+    pub current: u32,
+    pub full: u32,
+}
+
+#[derive(Default, BorshDeserialize, BorshSerialize, Serialize)]
 pub struct Stats {
     pub vitality: u16,
     pub strength: u16,
     pub agility: u16,
     pub intelligence: u16,
+}
+
+impl Stats {
+    pub fn sum(&self) -> u16 {
+        self.vitality + self.strength + self.intelligence + self.vitality
+    }
 }
 
 #[derive(Default, BorshDeserialize, BorshSerialize, Serialize)]
@@ -58,6 +67,8 @@ pub struct Trap {
     pub enabled: bool,
 }
 
+const LEVELS: [u32; 60] = [500, 1400, 2900, 4900, 7600, 10900, 14900, 19700, 25300, 31700, 39100, 47500, 66500, 88500, 112500, 138500, 167500, 199500, 234500, 272500, 337500, 407500, 482500, 562500, 647500, 737500, 832500, 937500, 1047500, 1167500, 1337500, 1517500, 1707500, 1907500, 2117500, 2347500, 2587500, 2837500, 3097500, 3377500, 3737500, 4117500, 4517500, 4937500, 5377500, 5837500, 6317500, 6817500, 7347500, 7897500, 8587500, 9307500, 10057500, 10837500, 11647500, 12487500, 13367500, 14277500, 15227500, 16207500];
+
 #[derive(Default, BorshDeserialize, BorshSerialize, Serialize)]
 pub struct Hero {
     pub id: u64,
@@ -68,7 +79,7 @@ pub struct Hero {
     
     pub health: Fillable,
     pub mana: Fillable,
-    pub experience: Fillable,
+    pub experience: Fillable32,
     
     pub name: String,
 
@@ -77,6 +88,7 @@ pub struct Hero {
     pub level: u8,
     pub kMana: u8,
     pub kHP: u8,
+    pub unusedPoints: u8,
 }
 
 impl Trap {
@@ -131,7 +143,7 @@ impl Hero {
         let race = rand_range(0, 22, seedOffset) as u8;
         let fullHP = vitality * 25 * (4 - class);
         let fullMana = intelligence * 25 * (class + 1);
-        
+
         let hero = Hero {
             id: id,
             checkDice: diceVal,
@@ -151,7 +163,7 @@ impl Hero {
 
             health: Fillable { current: fullHP, full: fullHP, },
             mana: Fillable { current: fullMana, full: fullMana, },
-            experience: Fillable { current: 0, full: 50, },
+            experience: Fillable32 { current: 0, full: LEVELS[0], },
 
             name: "Aboba".to_string(),
 
@@ -161,8 +173,35 @@ impl Hero {
             class: class as u8,
             kHP: 25 * (4 - class) as u8,
             kMana: 25 * (class + 1) as u8,
+            unusedPoints: 0,
         };
         hero
+    }
+
+    pub fn basePower(&mut self) -> u16 {
+        self.baseStats.sum()
+    }
+
+    pub fn totalPower(&mut self) -> u16 {
+        self.baseStats.sum() + self.improvedStats.sum()
+    }
+
+    pub fn improveStat(&mut self, stat: String) {
+        if self.unusedPoints > 0 {
+            if (stat == "vitality") {
+                self.improvedStats.vitality += 1;
+                self.unusedPoints -= 1;
+            } else if (stat == "strength") {
+                self.improvedStats.strength += 1;
+                self.unusedPoints -= 1;
+            } else if (stat == "agility") {
+                self.improvedStats.agility += 1;
+                self.unusedPoints -= 1;
+            } else if (stat == "intelligence") {
+                self.improvedStats.intelligence += 1;
+                self.unusedPoints -= 1;
+            }
+        }
     }
 
     /** (taken, given) */ 
@@ -184,7 +223,7 @@ impl Hero {
             return (taken, 0)
         } else {
             // TODO add exp here
-            self.experience.current += (roll - value) * 10;
+            self.experience.current += u32::from((roll - value) * 10);
             self.validateExp();
         }
         return (0, roll - value)
@@ -198,6 +237,10 @@ impl Hero {
     }
 
     fn validateExp(&mut self) {
-
+        if self.experience.current >= self.experience.full {
+            self.level += 1;
+            self.unusedPoints = ((self.basePower() / 10) as f64).ceil() as u8;
+            self.experience.full = LEVELS[(self.level - 1)  as usize];
+        }
     }
 }

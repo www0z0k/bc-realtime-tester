@@ -160,6 +160,18 @@ impl TribeTerra {
         return self.heroes.get(&id);
     }
 
+    pub fn add_to_stat(&mut self, id: u64, stat: String) -> Option<Hero> {
+        let sender = env::signer_account_id();
+        let stats = vec!["vitality", "strength", "agility", "intelligence"];
+        if self.get_user_heroes(sender.to_owned()).unwrap().contains(&id) && stats.contains(&&*stat) {
+            let mut currHero = self.hero_by_id(id).unwrap();
+            currHero.improveStat(stat);
+            self.heroes.insert(&currHero.id, &currHero);
+            return Some(currHero);
+        }
+        return None;
+    }
+
     pub fn get_user_traps(&self, account_id: String) -> Option<Vec<u64>> {
         return self.usersTraps.get(&account_id);
     }
