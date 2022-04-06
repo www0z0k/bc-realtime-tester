@@ -45,6 +45,7 @@ enum StorageKeys {
     Traps,
     UsersTraps,
     UsersGold,
+    Timings,
 }
 
 
@@ -58,6 +59,7 @@ pub struct TribeTerra {
     usersHeroes: UnorderedMap<AccountId, Vec<u64>>,
     usersTraps: UnorderedMap<AccountId, Vec<u64>>,
     globals: UnorderedMap<String, u64>,
+    timings: UnorderedMap<String, u64>,
     usersGold: UnorderedMap<AccountId, f64>,
 }
 
@@ -70,6 +72,7 @@ impl Default for TribeTerra {
             traps: UnorderedMap::new(StorageKeys::Traps),
             usersTraps: UnorderedMap::new(StorageKeys::UsersTraps),
             globals: UnorderedMap::new(StorageKeys::Globals),
+            timings: UnorderedMap::new(StorageKeys::Timings),
             usersGold: UnorderedMap::new(StorageKeys::UsersGold),
         }
     }
@@ -77,6 +80,28 @@ impl Default for TribeTerra {
 
 #[near_bindgen]
 impl TribeTerra {
+
+    pub fn set_interval(&mut self, id: String) -> u64 {
+        if self.timings.get(&id) != std::option::Option::None {
+            return 0; // interval already set
+        }
+
+        self.timings.insert(&id, &env::block_timestamp());
+        return 1;
+    }
+
+    pub fn get_interval(&self, id: String) -> u64 {
+        if self.timings.get(&id) == std::option::Option::None {
+            return 0; // unknown interval 
+        }
+
+        return env::block_timestamp() - self.timings.get(&id).unwrap();
+    }
+    
+
+    pub fn get_time(&self) -> u64 {
+        env::block_timestamp()
+    }
 
     pub fn account_inited(&self, account_id: String) -> bool {
         return self.records.get(&account_id) != std::option::Option::None
