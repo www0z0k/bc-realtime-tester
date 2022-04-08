@@ -5,14 +5,14 @@ use crate::*;
 cargo build --all --target wasm32-unknown-unknown --release
 cp target/wasm32-unknown-unknown/release/tribe_terra.wasm res/tribe_terra.wasm && near dev-deploy res/tribe_terra.wasm
 
-near view dev-1649287974163-15947483174306 get_user_heroes '{"account_id": "www0rker.testnet"}'
-near view dev-1649287974163-15947483174306 hero_by_id '{"id": 1}'
+near view dev-1649387744746-46596571413622 get_user_heroes '{"account_id": "www0rker.testnet"}'
+near view dev-1649387744746-46596571413622 hero_by_id '{"id": 1}'
 
-near call dev-1649287974163-15947483174306 set_interval '{"id": "1"}' --accountId 'www0rker.testnet'
-near view dev-1649287974163-15947483174306 get_interval '{"id": "1"}'
+near call dev-1649387744746-46596571413622 set_interval '{"id": "1"}' --accountId 'www0rker.testnet'
+near view dev-1649387744746-46596571413622 get_interval '{"id": "1"}'
 
-near call dev-1649287974163-15947483174306 add_to_stat '{"id": 1, "stat": "vitality"}' --accountId 'www0rker.testnet'
-near call dev-1649287974163-15947483174306 init --accountId 'www0rker.testnet'
+near call dev-1649387744746-46596571413622 add_to_stat '{"id": 1, "stat": "vitality"}' --accountId 'www0rker.testnet'
+near call dev-1649387744746-46596571413622 init --accountId 'www0rker.testnet'
 
 */
 #[derive(Default, BorshDeserialize, BorshSerialize, Serialize)]

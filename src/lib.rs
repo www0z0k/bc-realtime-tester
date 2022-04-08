@@ -45,7 +45,9 @@ enum StorageKeys {
     Traps,
     UsersTraps,
     UsersGold,
+    UsersDungeonGold,
     Timings,
+    Fighters,
 }
 
 
@@ -58,9 +60,11 @@ pub struct TribeTerra {
     traps: UnorderedMap<u64, Trap>,
     usersHeroes: UnorderedMap<AccountId, Vec<u64>>,
     usersTraps: UnorderedMap<AccountId, Vec<u64>>,
-    globals: UnorderedMap<String, u64>,
+    globals: UnorderedMap<String, f64>,
     timings: UnorderedMap<String, u64>,
     usersGold: UnorderedMap<AccountId, f64>,
+    usersDungeonGold: UnorderedMap<AccountId, f64>,
+    fighters: UnorderedMap<AccountId, String>,
 }
 
 impl Default for TribeTerra {
@@ -74,12 +78,30 @@ impl Default for TribeTerra {
             globals: UnorderedMap::new(StorageKeys::Globals),
             timings: UnorderedMap::new(StorageKeys::Timings),
             usersGold: UnorderedMap::new(StorageKeys::UsersGold),
+            usersDungeonGold: UnorderedMap::new(StorageKeys::UsersDungeonGold),
+            fighters: UnorderedMap::new(StorageKeys::Fighters),
         }
     }
 }
 
 #[near_bindgen]
 impl TribeTerra {
+
+    pub fn open_dungeon(&mut self) -> u8 {
+        let account_id = env::signer_account_id();
+        let mut key = account_id.to_owned();
+        key.push_str(&"-dungeon");
+        if self.set_interval(key) == 0 {
+            return 0; // already open
+        }
+        self.fill_dungeon_stash(100.0);
+        self.fighters.insert(&account_id, &"tier_1".to_owned());
+        return 1;
+    }
+
+    pub fn clear_interval(&mut self, id: String) {
+        self.timings.remove(&id);
+    }
 
     pub fn set_interval(&mut self, id: String) -> u64 {
         if self.timings.get(&id) != std::option::Option::None {
@@ -97,7 +119,6 @@ impl TribeTerra {
 
         return env::block_timestamp() - self.timings.get(&id).unwrap();
     }
-    
 
     pub fn get_time(&self) -> u64 {
         env::block_timestamp()
@@ -112,6 +133,13 @@ impl TribeTerra {
     }
     
     pub fn init(&mut self) {
+        if self.globals.get(&"systemInitialGold".to_owned()) == std::option::Option::None {
+            self.globals.insert(&"systemInitialGold".to_owned(), &1000000000.0);
+        }
+        if self.globals.get(&"systemGold".to_owned()) == std::option::Option::None {
+            self.globals.insert(&"systemGold".to_owned(), &0.0);
+        }
+
         let account_id = env::signer_account_id();
         self.records.insert(&account_id, &"inited".to_owned());
 
@@ -132,7 +160,8 @@ impl TribeTerra {
         let mut opt:Vec<u64> = vec![h1.id, h2.id, h3.id];
         self.usersHeroes.insert(&account_id, &opt);
 
-        self.usersGold.insert(&account_id, &1000000.0);
+        // self.usersGold.insert(&account_id, &1000.0);
+        self.transfer_gold_from_system(account_id.to_owned(), 1000.0);
 
         let mut optTraps:Vec<u64> = vec![t1.id, t2.id, t3.id];
         self.usersTraps.insert(&account_id, &optTraps);
@@ -148,11 +177,58 @@ impl TribeTerra {
         }
     }
 
+    pub fn list_fighters(self) -> Vec<String> {
+        let keys = self.fighters.keys_as_vector();
+        (0..self.fighters.len())
+            .map(|index| (keys.get(index).unwrap()))
+            .collect()
+    }
+
     pub fn list_all_users(self) -> Vec<String> {
         let keys = self.records.keys_as_vector();
         (0..self.records.len())
             .map(|index| (keys.get(index).unwrap()))
             .collect()
+    }
+
+    //TODO remove pub
+    pub fn transfer_gold_from_system(&mut self, target: String, amount: f64) -> f64 {
+        let mut initGold = self.globals.get(&"systemInitialGold".to_owned()).unwrap();
+        let mut systemGold = self.globals.get(&"systemGold".to_owned()).unwrap();
+        let mut tGold = self.usersGold.get(&target).unwrap();
+        if initGold < amount && systemGold < amount {
+            return 0.0
+        }
+        if systemGold >= amount {
+            systemGold -= amount;
+            tGold += amount;
+            self.usersGold.insert(&target, &tGold);
+            self.globals.insert(&"systemGold".to_owned(), &systemGold);
+            return amount
+        }
+        if initGold >= amount {
+            initGold -= amount;
+            tGold += amount;
+            self.usersGold.insert(&target, &tGold);
+            self.globals.insert(&"systemInitialGold".to_owned(), &initGold);
+        }
+        return amount
+    }
+
+    //TODO remove pub
+    pub fn transfer_gold_to_system(&mut self, target: String, amount: f64) -> f64 {
+        let mut systemGold = self.globals.get(&"systemGold".to_owned()).unwrap();
+        let mut tGold = self.usersGold.get(&target).unwrap();
+        if tGold < amount {
+            return 0.0
+        }
+        if systemGold >= amount {
+            systemGold += amount;
+            tGold -= amount;
+            self.usersGold.insert(&target, &tGold);
+            self.globals.insert(&"systemGold".to_owned(), &systemGold);
+        }
+        return amount
     }
 
     fn transfer_gold_from_to(&mut self, sender: String, target: String, amount: f64) -> f64 {
@@ -168,9 +244,51 @@ impl TribeTerra {
         return amount
     }
 
+    fn transfer_dungeon_gold_from_to(&mut self, sender: String, target: String, amount: f64) -> f64 {
+        let mut sGold = self.usersDungeonGold.get(&sender).unwrap();
+        let mut tGold = self.usersDungeonGold.get(&target).unwrap();
+        if sGold < amount || sender == target {
+            return 0.0
+        }
+        sGold -= amount;
+        tGold += amount;
+        self.usersDungeonGold.insert(&sender, &sGold);
+        self.usersDungeonGold.insert(&target, &tGold);
+        return amount
+    }
+
+    fn fill_dungeon_stash(&mut self, amount: f64) -> f64 {
+        let sender = env::signer_account_id();
+        let mut dGold = self.usersDungeonGold.get(&sender).unwrap();
+        let mut uGold = self.usersGold.get(&sender).unwrap();
+        if uGold < amount {
+            return 0.0;
+        }
+        dGold += amount;
+        uGold -= amount;
+        self.usersDungeonGold.insert(&sender, &dGold);
+        self.usersGold.insert(&sender, &uGold);
+        return amount;
+    }
+
+    fn empty_dungeon_stash(&mut self) -> f64 {
+        let sender = env::signer_account_id();
+        let mut dGold = self.usersDungeonGold.get(&sender).unwrap();
+        let mut uGold = self.usersGold.get(&sender).unwrap();
+
+        uGold += dGold;
+        self.usersDungeonGold.insert(&sender, &0.0);
+        self.usersGold.insert(&sender, &uGold);
+        return dGold;
+    }
+
     pub fn transfer_gold_to(&mut self, target: String, amount: u64) -> f64 {
         let sender = env::signer_account_id();
         return self.transfer_gold_from_to(sender, target, amount as f64)
+    }
+
+    pub fn get_user_dungeon_gold(&self, account_id: String) -> Option<f64> {
+        return self.usersDungeonGold.get(&account_id);
     }
 
     pub fn get_user_gold(&self, account_id: String) -> Option<f64> {
@@ -207,29 +325,30 @@ impl TribeTerra {
 
     fn create_hero(&mut self, rarity: String, diceVal: u16, seedOffset: usize) -> Hero {
         if self.globals.get(&"lastHeroID".to_owned()) == std::option::Option::None {
-            self.globals.insert(&"lastHeroID".to_owned(), &0);
+            self.globals.insert(&"lastHeroID".to_owned(), &0.0);
         }
 
         let seedPoints = if rarity == "common" { rand_range(5, 10, seedOffset) } else { rand_range(11, 20, seedOffset) };
-        let newID = self.globals.get(&"lastHeroID".to_owned()).unwrap() + 1;
+        let newID = self.globals.get(&"lastHeroID".to_owned()).unwrap() + 1.0;
         self.globals.insert(&"lastHeroID".to_owned(), &newID);
         let offset = seedOffset * 3;
-        return Hero::new(seedPoints, 1, diceVal, newID, offset); // no more than 3 in one block
+        return Hero::new(seedPoints, 1, diceVal, newID as u64, offset); // no more than 3 in one block
     }
 
     fn create_trap(&mut self, power: u16, value: u16, diceVal: u16, seedOffset: usize) -> Trap {
         if self.globals.get(&"lastHeroID".to_owned()) == std::option::Option::None {
-            self.globals.insert(&"lastHeroID".to_owned(), &0);
+            self.globals.insert(&"lastHeroID".to_owned(), &0.0);
         }
 
-        let newID = self.globals.get(&"lastHeroID".to_owned()).unwrap() + 1;
+        let newID = self.globals.get(&"lastHeroID".to_owned()).unwrap() + 1.0;
         self.globals.insert(&"lastHeroID".to_owned(), &newID);
         let stat = rand_range(0, 3, seedOffset);
         let offset = seedOffset * 3;
-        return Trap::new(power, value, diceVal, stat, newID, offset);  // no more than 3 in one block
+        return Trap::new(power, value, diceVal, stat, newID as u64, offset);  // no more than 3 in one block
     }
 
     pub fn do_dungeon(&mut self, defender: String) -> BattleLog {
+        // TODO check if defender is open
         let attacker = env::signer_account_id();
 
         let mut res = BattleLog {
@@ -301,10 +420,10 @@ impl TribeTerra {
             self.traps.insert(&currTrap.id, &currTrap);
         }
         
-        let basicReward = self.get_user_gold(attacker.to_owned()).unwrap();
+        let basicReward = self.get_user_dungeon_gold(attacker.to_owned()).unwrap();
         if deadHeroes < 3 && !failed {
             res.rewardGold = basicReward * 0.1 * (1.0 + (3 - deadHeroes) as f64 * 0.01 + deadTraps as f64 * 0.01);
-            self.transfer_gold_from_to(defender.to_owned(), attacker.to_owned(), res.rewardGold);
+            self.transfer_dungeon_gold_from_to(defender.to_owned(), attacker.to_owned(), res.rewardGold);
         }
         return res
     }
