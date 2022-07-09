@@ -144,6 +144,10 @@ impl TribeTerra {
         return true;
     }
 
+    pub fn get_user_tier(self, uid: String) -> Option<String> {
+        return self.fighters.get(&uid);
+    }
+
     pub fn list_fighters(&mut self, index: usize) -> Vec<String> {
         let now = &env::block_timestamp();
 
@@ -363,7 +367,7 @@ impl TribeTerra {
         let tier_atk: Option<String> = self.fighters.get(&attacker);
         let tier_def: Option<String> = self.fighters.get(&defender);
 
-        if tier_atk == None || tier_def != None || tier_atk.unwrap() == tier_def.unwrap() {
+        if tier_atk == None || tier_def == None || tier_atk.unwrap() != tier_def.unwrap() {
             return None;
         }
 
