@@ -1,4 +1,7 @@
 #![allow(non_snake_case)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
+
 mod game;
 mod coins;
 
@@ -149,8 +152,6 @@ impl TribeTerra {
     }
 
     pub fn list_fighters(&mut self, index: usize) -> Vec<String> {
-        let now = &env::block_timestamp();
-
         let mut tier_id = String::from("tier_");
         tier_id.push_str(&index.to_string().to_owned());
 
@@ -158,8 +159,6 @@ impl TribeTerra {
         let vec_keys: Vec<String> = (0..self.fighters.len())
             .map(|index| (keys.get(index).unwrap()))
             .collect();
-
-        let mut to_remove: Vec<String> = Vec::new();
 
         vec_keys
             .into_iter()
