@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
 #![allow(dead_code)]
+#![allow(unused_must_use)]
 
 mod game;
 mod coins;
@@ -12,6 +13,7 @@ use crate::game::Trap;
 use crate::game::BattleLog;
 use crate::game::SingleBattleResult;
 use crate::game::AttackLogRecord;
+use crate::game::BASE_POWER;
 use crate::coins::Coins;
 use crate::coins::FEE;
 use crate::coins::LEAGUES;
@@ -60,6 +62,8 @@ enum StorageKeys {
     Fighters,
     Dungeons,
     AttackLog,
+    HeroesForUser,
+    TrapsForUser,
 }
 
 
@@ -77,6 +81,8 @@ pub struct TribeTerra {
     dungeons: UnorderedMap<AccountId, Vec<u64>>,
     attackLog: UnorderedMap<AccountId, Vec<AttackLogRecord>>,
     coins: Coins,
+    heroesForUser: UnorderedMap<AccountId, Vec<Hero>>,
+    trapsForUser: UnorderedMap<AccountId, Vec<Trap>>,
 
 }
 
@@ -92,6 +98,8 @@ impl Default for TribeTerra {
             fighters: UnorderedMap::new(StorageKeys::Fighters),
             dungeons: UnorderedMap::new(StorageKeys::Dungeons),
             attackLog: UnorderedMap::new(StorageKeys::AttackLog),
+            heroesForUser: UnorderedMap::new(StorageKeys::HeroesForUser),
+            trapsForUser: UnorderedMap::new(StorageKeys::TrapsForUser),
             coins: Coins::new(),
         }
     }
@@ -147,8 +155,9 @@ impl TribeTerra {
         return true;
     }
 
-    pub fn get_user_tier(self, uid: String) -> Option<String> {
-        return self.fighters.get(&uid);
+    pub fn get_user_tier(self, uid: String) -> (Option<String>, u64) {
+        let tkey = format!("{}-dungeon", &uid.to_owned());
+        return (self.fighters.get(&uid), self.get_interval(tkey));
     }
 
     pub fn list_fighters(&mut self, index: usize) -> Vec<String> {
@@ -302,6 +311,30 @@ impl TribeTerra {
 
     pub fn get_user_heroes(&self, account_id: String) -> Option<Vec<u64>> {
         return self.usersHeroes.get(&account_id);
+    }
+
+    pub fn get_best_user_hero_power(&self, account_id: String) -> u16 {
+        let heroids = self.usersHeroes.get(&account_id);
+        if heroids == None {
+            return BASE_POWER;
+        }
+        let powers: Vec<u16> = heroids.unwrap().into_iter().map(|index| self.hero_by_id(index).unwrap().totalPower()).collect();
+        if powers.len() == 0 {
+            return BASE_POWER;
+        }
+        return powers.iter().max().unwrap().to_owned();
+    }
+
+    pub fn get_best_user_trap_power(&self, account_id: String) -> u16 {
+        let trapids = self.usersTraps.get(&account_id);
+        if trapids == None {
+            return BASE_POWER;
+        }
+        let powers: Vec<u16> = trapids.unwrap().into_iter().map(|index| self.trap_by_id(index).unwrap().power).collect();
+        if powers.len() == 0 {
+            return BASE_POWER;
+        }
+        return powers.iter().max().unwrap().to_owned();
     }
 
     pub fn hero_by_id(&self, id: u64) -> Option<Hero> {
