@@ -21,6 +21,7 @@ use crate::coins::League;
 
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::BorshStorageKey;
+use near_sdk::test_utils::accounts;
 use near_sdk::{env, log, near_bindgen, AccountId};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -280,12 +281,26 @@ impl TribeTerra {
         let t3 = self.create_trap(10, 7, 6, 3);
         self.traps.insert(&t3.id, &t3);
         
-        let mut opt:Vec<u64> = vec![h1.id, h2.id, h3.id];
+        let opt:Vec<u64> = vec![h1.id, h2.id, h3.id];
         self.usersHeroes.insert(&account_id, &opt); 
-        let mut optTraps:Vec<u64> = vec![t1.id, t2.id, t3.id];
+        let optTraps:Vec<u64> = vec![t1.id, t2.id, t3.id];
         self.usersTraps.insert(&account_id, &optTraps);
         
         self.coins.transfer_gold_from_system(account_id.to_owned(), 1000.0);
+    }
+
+    pub fn gen_new_heroes_for_user(&mut self) {
+        let account_id = env::signer_account_id();
+        let seed = self.get_best_user_hero_power(account_id.to_owned());
+        let h1 = self.create_hero_on_power(seed, 6, 1);
+        let h2 = self.create_hero_on_power(seed, 6, 2);
+        let h3 = self.create_hero_on_power(seed, 6, 3);
+        let opt:Vec<Hero> = vec![h1, h2, h3];
+        self.heroesForUser.insert(&account_id, &opt); 
+    }
+    
+    pub fn get_tavern_heroes(&self, account_id: String) -> Option<Vec<Hero>> {
+        return self.heroesForUser.get(&account_id);
     }
 
     pub fn add_token(&mut self, message: String) {
@@ -375,6 +390,14 @@ impl TribeTerra {
         self.coins.globals.insert(&"lastHeroID".to_owned(), &newID);
         let offset = seedOffset * 3;
         return Hero::new(seedPoints, 1, diceVal, newID as u64, offset); // no more than 3 in one block
+    }
+
+    fn create_hero_on_power(&mut self, seedPoints: u16, diceVal: u16, seedOffset: usize) -> Hero {
+        if self.coins.globals.get(&"lastHeroID".to_owned()) == None {
+            self.coins.globals.insert(&"lastHeroID".to_owned(), &0.0);
+        }
+        let offset = seedOffset * 3;
+        return Hero::new(seedPoints, 1, diceVal, 0, offset); // no more than 3 in one block
     }
 
     fn create_trap(&mut self, power: u16, value: u16, diceVal: u16, seedOffset: usize) -> Trap {
