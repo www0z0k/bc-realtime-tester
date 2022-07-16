@@ -14,6 +14,7 @@ use crate::game::BattleLog;
 use crate::game::SingleBattleResult;
 use crate::game::AttackLogRecord;
 use crate::game::BASE_POWER;
+use crate::game::POINT_PRICE;
 use crate::coins::Coins;
 use crate::coins::FEE;
 use crate::coins::LEAGUES;
@@ -239,27 +240,9 @@ impl TribeTerra {
 
     pub fn init(&mut self) {
         let account_id = env::signer_account_id();
+        // TODO kill second init)
         self.records.insert(&account_id, &"inited".to_owned());
 
-        /* let h1 = self.create_hero("common".to_string(), 6, 1);
-        self.heroes.insert(&h1.id, &h1);
-        let h2 = self.create_hero("common".to_string(), 6, 4);
-        self.heroes.insert(&h2.id, &h2);
-        let h3 = self.create_hero("common".to_string(), 6, 7);
-        self.heroes.insert(&h3.id, &h3);
-
-        let t1 = self.create_trap(10, 7, 6, 1);
-        self.traps.insert(&t1.id, &t1);
-        let t2 = self.create_trap(10, 7, 6, 2);
-        self.traps.insert(&t2.id, &t2);
-        let t3 = self.create_trap(10, 7, 6, 3);
-        self.traps.insert(&t3.id, &t3);
-        
-        let mut opt:Vec<u64> = vec![h1.id, h2.id, h3.id];
-        self.usersHeroes.insert(&account_id, &opt); 
-        let mut optTraps:Vec<u64> = vec![t1.id, t2.id, t3.id];
-        self.usersTraps.insert(&account_id, &optTraps);
-        */
         self.coins.transfer_gold_from_system(account_id.to_owned(), 1000.0);
     }
 
@@ -300,6 +283,35 @@ impl TribeTerra {
     }
     
     pub fn get_tavern_heroes(&self, account_id: String) -> Option<Vec<Hero>> {
+        return self.heroesForUser.get(&account_id);
+    }
+
+    pub fn get_point_price(&self) -> f64 {
+        return POINT_PRICE;
+    }
+
+    pub fn hire_hero(&mut self, index: usize) -> Option<Vec<Hero>> {
+        let account_id = env::signer_account_id();
+        let mut heroes = self.heroesForUser.get(&account_id).unwrap();
+
+        let power = heroes[index].totalPower();
+        let price = power as f64 * POINT_PRICE;
+        if price > self.coins.get_user_gold(account_id.to_owned()).unwrap_or(0.0) {
+            return self.heroesForUser.get(&account_id);
+        }
+
+        self.coins.transfer_gold_to_system(account_id.to_owned(), price);
+
+        let mut heroToMint = heroes.remove(index);
+        heroToMint.id = self.coins.next_id();
+
+        self.heroes.insert(&heroToMint.id, &heroToMint);
+
+        let mut userHeroIDs = self.usersHeroes.get(&account_id).unwrap_or(Vec::<u64>::new());
+        userHeroIDs.push(heroToMint.id);
+        self.usersHeroes.insert(&account_id, &userHeroIDs);
+
+        self.heroesForUser.insert(&account_id, &heroes);
         return self.heroesForUser.get(&account_id);
     }
 
@@ -381,35 +393,22 @@ impl TribeTerra {
     }
 
     fn create_hero(&mut self, rarity: String, diceVal: u16, seedOffset: usize) -> Hero {
-        if self.coins.globals.get(&"lastHeroID".to_owned()) == None {
-            self.coins.globals.insert(&"lastHeroID".to_owned(), &0.0);
-        }
-
         let seedPoints = if rarity == "common" { rand_range(5, 10, seedOffset) } else { rand_range(11, 20, seedOffset) };
-        let newID = self.coins.globals.get(&"lastHeroID".to_owned()).unwrap() + 1.0;
-        self.coins.globals.insert(&"lastHeroID".to_owned(), &newID);
+        let newID = self.coins.next_id();
         let offset = seedOffset * 3;
-        return Hero::new(seedPoints, 1, diceVal, newID as u64, offset); // no more than 3 in one block
+        return Hero::new(seedPoints, 1, diceVal, newID, offset); // no more than 3 in one block
     }
 
     fn create_hero_on_power(&mut self, seedPoints: u16, diceVal: u16, seedOffset: usize) -> Hero {
-        if self.coins.globals.get(&"lastHeroID".to_owned()) == None {
-            self.coins.globals.insert(&"lastHeroID".to_owned(), &0.0);
-        }
         let offset = seedOffset * 3;
         return Hero::new(seedPoints, 1, diceVal, 0, offset); // no more than 3 in one block
     }
 
     fn create_trap(&mut self, power: u16, value: u16, diceVal: u16, seedOffset: usize) -> Trap {
-        if self.coins.globals.get(&"lastHeroID".to_owned()) == None {
-            self.coins.globals.insert(&"lastHeroID".to_owned(), &0.0);
-        }
-
-        let newID = self.coins.globals.get(&"lastHeroID".to_owned()).unwrap() + 1.0;
-        self.coins.globals.insert(&"lastHeroID".to_owned(), &newID);
+        let newID = self.coins.next_id();
         let stat = rand_range(0, 3, seedOffset);
         let offset = seedOffset * 3;
-        return Trap::new(power, value, diceVal, stat, newID as u64, offset);  // no more than 3 in one block
+        return Trap::new(power, value, diceVal, stat, newID, offset);  // no more than 3 in one block
     }
 
     pub fn do_dungeon(&mut self, defender: String, hero_0: u64, hero_1: u64, hero_2: u64) -> Option<BattleLog> {

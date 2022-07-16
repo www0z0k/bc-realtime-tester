@@ -77,12 +77,12 @@ impl Coins {
         if tGold < amount {
             return 0.0
         }
-        if systemGold >= amount {
-            systemGold += amount;
-            tGold -= amount;
-            self.usersGold.insert(&target, &tGold);
-            self.globals.insert(&"systemGold".to_owned(), &systemGold);
-        }
+
+        systemGold += amount;
+        tGold -= amount;
+        self.usersGold.insert(&target, &tGold);
+        self.globals.insert(&"systemGold".to_owned(), &systemGold);
+
         return amount
     }
 
@@ -128,7 +128,7 @@ impl Coins {
 
     pub fn empty_dungeon_stash(&mut self) -> f64 {
         let sender = env::signer_account_id();
-        let mut dGold = Coins::safeUnwrap(self.usersDungeonGold.get(&sender));
+        let dGold = Coins::safeUnwrap(self.usersDungeonGold.get(&sender));
         let mut uGold = self.usersGold.get(&sender).unwrap();
 
         uGold += dGold;
@@ -148,5 +148,14 @@ impl Coins {
 
     pub fn get_user_gold(&self, account_id: String) -> Option<f64> {
         return self.usersGold.get(&account_id);
+    }
+
+    pub fn next_id(&mut self) -> u64 {
+        if self.globals.get(&"lastHeroID".to_owned()) == None {
+            self.globals.insert(&"lastHeroID".to_owned(), &0.0);
+        }
+        let newID = self.globals.get(&"lastHeroID".to_owned()).unwrap() + 1.0;
+        self.globals.insert(&"lastHeroID".to_owned(), &newID);
+        return newID as u64;
     }
 }

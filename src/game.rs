@@ -11,7 +11,9 @@ near view dev-1657435856672-28818930359759 get_user_traps '{"account_id": "www0r
 near view dev-1657435856672-28818930359759 get_dungeon '{"account_id": "www0rker.testnet"}'
 near view dev-1657435856672-28818930359759 hero_by_id '{"id": 1}'
 near view dev-1657435856672-28818930359759 list_leagues
+near view dev-1657435856672-28818930359759 get_point_price
 near call dev-1657435856672-28818930359759 list_fighters '{"index": 1}' --accountId 'www0rker.testnet'
+near call dev-1657435856672-28818930359759 hire_hero '{"index": 2}' --accountId 'www0rker.testnet'
 
 
 near call dev-1657435856672-28818930359759 set_interval '{"id": "1"}' --accountId 'www0rker.testnet'
@@ -97,6 +99,7 @@ pub struct Trap {
 
 const LEVELS: [u32; 60] = [500, 1400, 2900, 4900, 7600, 10900, 14900, 19700, 25300, 31700, 39100, 47500, 66500, 88500, 112500, 138500, 167500, 199500, 234500, 272500, 337500, 407500, 482500, 562500, 647500, 737500, 832500, 937500, 1047500, 1167500, 1337500, 1517500, 1707500, 1907500, 2117500, 2347500, 2587500, 2837500, 3097500, 3377500, 3737500, 4117500, 4517500, 4937500, 5377500, 5837500, 6317500, 6817500, 7347500, 7897500, 8587500, 9307500, 10057500, 10837500, 11647500, 12487500, 13367500, 14277500, 15227500, 16207500];
 pub const BASE_POWER: u16 = 5;
+pub const POINT_PRICE: f64 = 0.61;
 
 #[derive(Default, BorshDeserialize, BorshSerialize, Serialize, Clone)]
 pub struct Hero {
