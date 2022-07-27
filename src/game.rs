@@ -9,6 +9,7 @@ near view dev-1657435856672-28818930359759 get_user_heroes '{"account_id": "www0
 near view dev-1657435856672-28818930359759 get_user_tier '{"uid": "www0rker.testnet"}'
 near view dev-1657435856672-28818930359759 get_user_traps '{"account_id": "www0rker.testnet"}'
 near view dev-1657435856672-28818930359759 get_dungeon '{"account_id": "www0rker.testnet"}'
+near view dev-1657435856672-28818930359759 get_dungeon '{"account_id": "youname.testnet"}'
 near view dev-1657435856672-28818930359759 hero_by_id '{"id": 1}'
 near view dev-1657435856672-28818930359759 list_leagues
 near view dev-1657435856672-28818930359759 get_point_price
@@ -25,6 +26,7 @@ near view dev-1657435856672-28818930359759 get_best_user_trap_power '{"account_i
 
 near call dev-1657435856672-28818930359759 add_to_stat '{"id": 1, "stat": "vitality"}' --accountId 'www0rker.testnet'
 near call dev-1657435856672-28818930359759 do_dungeon '{"defender": "aboba.testnet", "hero_0": 2, "hero_1": 1, "hero_2": 3}' --accountId 'www0rker.testnet'
+near call dev-1657435856672-28818930359759 check_battle_prerequisites '{"defender": "aboba.testnet", "hero_0": 2, "hero_1": 1, "hero_2": 3}' --accountId 'www0rker.testnet'
 near call dev-1657435856672-28818930359759 open_dungeon '{"index": 1, "trap_0": 6, "trap_1": 4, "trap_2": 5}' --accountId 'www0rker.testnet'
 near call dev-1657435856672-28818930359759 setup_traps '{"trap_0": 6, "trap_1": 5, "trap_2": 4}' --accountId 'www0rker.testnet'
 near call dev-1657435856672-28818930359759 setup_traps '{"trap_0": 4, "trap_1": 5, "trap_2": 4}' --accountId 'www0rker.testnet'

@@ -159,7 +159,7 @@ impl TribeTerra {
 
     pub fn get_user_tier(self, uid: String) -> (Option<String>, u64) {
         let tkey = format!("{}-dungeon", &uid.to_owned());
-        return (self.fighters.get(&uid), self.get_interval(tkey));
+        return (self.fighters.get(&uid), self.timings.get(&tkey).unwrap_or(0));
     }
 
     pub fn list_fighters(&mut self, index: usize) -> Vec<String> {
@@ -535,6 +535,43 @@ impl TribeTerra {
 
     pub fn test1trap(&self) -> Trap {
         return Trap::new(10, 7, 6, 0, 1, 0)
+    }
+
+    pub fn check_battle_prerequisites(&self, defender: String, hero_0: u64, hero_1: u64, hero_2: u64) -> String {
+        let attacker = env::signer_account_id();
+
+        if !self.account_inited(attacker.to_owned()) || !self.account_inited(defender.to_owned()) {
+            return "one of accounts not inited".to_string();
+        }
+
+        let tier_atk: Option<String> = self.fighters.get(&attacker);
+        let tier_def: Option<String> = self.fighters.get(&defender);
+
+        if tier_atk == None || tier_def == None || tier_atk.unwrap() != tier_def.unwrap() {
+            return "tiers mismatch".to_string();
+        }
+
+        if self.get_dungeon((*defender).to_string()) == None {
+            return "no dungeon".to_string();
+        }
+
+        let attacker_heroes = self.usersHeroes.get(&attacker);
+        if attacker_heroes == None {
+            return "no heroes".to_string();
+        } 
+
+        let attacker_heroes_unwrapped = self.usersHeroes.get(&attacker).unwrap();
+        if !attacker_heroes_unwrapped.contains(&hero_0) || !attacker_heroes_unwrapped.contains(&hero_1) || !attacker_heroes_unwrapped.contains(&hero_2) {
+            return "not own heroes".to_string();
+        }
+        let party = vec![hero_0, hero_1, hero_2];
+        let mut v = vec![hero_0, hero_1, hero_2];
+        v.sort_unstable();
+        v.dedup();
+        if party.len() != v.len() {
+            return "duplicate heroes".to_string();
+        }
+        return "should be ok".to_string();
     }
 }
 
