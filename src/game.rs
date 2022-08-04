@@ -17,6 +17,9 @@ near call dev-1657435856672-28818930359759 list_fighters '{"index": 1}' --accoun
 near call dev-1657435856672-28818930359759 hire_hero '{"index": 2}' --accountId 'www0rker.testnet'
 
 
+near call dev-1657435856672-28818930359759 record_atk_ts '{"account_id": "www0rker.testnet"}' --accountId 'www0rker.testnet'
+near view dev-1657435856672-28818930359759 get_last_atk_ts '{"key": "www0rker.testnet-last_atk"}' 
+
 near call dev-1657435856672-28818930359759 set_interval '{"id": "1"}' --accountId 'www0rker.testnet'
 near call dev-1657435856672-28818930359759 gen_new_heroes_for_user --accountId 'www0rker.testnet'
 near view dev-1657435856672-28818930359759 get_tavern_heroes '{"account_id": "www0rker.testnet"}'

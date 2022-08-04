@@ -213,6 +213,17 @@ impl TribeTerra {
         return env::block_timestamp() - self.timings.get(&id).unwrap();
     }
 
+    pub fn record_atk_ts(&mut self, account_id: String) {
+        let mut key = account_id.to_owned();
+        key.push_str(&"-last_atk");
+        let ts = env::block_timestamp();
+        self.timings.insert(&key, &ts);
+    }
+
+    pub fn get_last_atk_ts(&self, key: String) -> Option<u64>{
+        return self.timings.get(&key);
+    }
+
     pub fn get_time(&self) -> u64 {
         env::block_timestamp()
     }
@@ -478,6 +489,9 @@ impl TribeTerra {
                 return None;
             }
         }
+
+        self.record_atk_ts(attacker.to_owned());
+        self.record_atk_ts(defender.to_owned());
 
         // all checks passed, time to log the battle
         if self.attackLog.get(&attacker) == None {
