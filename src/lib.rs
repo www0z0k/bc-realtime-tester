@@ -274,10 +274,21 @@ impl TribeTerra {
 
     pub fn gen_new_heroes_for_user(&mut self) {
         let account_id = env::signer_account_id();
-        let seed = self.get_best_user_hero_power(account_id.to_owned());
-        let h1 = self.create_hero_on_power(seed, 6, 1);
-        let h2 = self.create_hero_on_power(seed, 6, 2);
-        let h3 = self.create_hero_on_power(seed, 6, 3);
+        // let seed = self.get_best_user_hero_power(account_id.to_owned());
+        // 1.05..1.15
+        let avg = self.get_avg_user_hero_power(account_id.to_owned());
+
+        let delta1 = rand_range(0, 10, 1) as f32;
+        let seed1 = ((1.05 + delta1 / 10.0) * avg).round() as u16;
+        let h1 = self.create_hero_on_power(seed1, 6, 1);
+
+        let delta2 = rand_range(0, 10, 2) as f32;
+        let seed2 = ((1.05 + delta2 / 10.0) * avg).round() as u16;
+        let h2 = self.create_hero_on_power(seed2, 6, 2);
+
+        let delta3 = rand_range(0, 10, 1) as f32;
+        let seed3 = ((1.05 + delta3 / 10.0) * avg).round() as u16;
+        let h3 = self.create_hero_on_power(seed3, 6, 3);
         let opt:Vec<Hero> = vec![h1, h2, h3];
         self.heroesForUser.insert(&account_id, &opt); 
     }
@@ -350,6 +361,17 @@ impl TribeTerra {
             return BASE_POWER;
         }
         return powers.iter().max().unwrap().to_owned();
+    }
+
+    pub fn get_avg_user_hero_power(&self, account_id: String) -> f32 {
+        let heroids = self.usersHeroes.get(&account_id);
+        if heroids == None {
+            return BASE_POWER as f32;
+        }
+        let powers: Vec<u16> = heroids.unwrap().into_iter().map(|index| self.hero_by_id(index).unwrap().totalPower()).collect();
+        let sum: u16 = powers.iter().sum();
+        let res: f32 = sum as f32 / powers.len() as f32;
+        return res;
     }
 
     pub fn get_best_user_trap_power(&self, account_id: String) -> u16 {
@@ -446,6 +468,17 @@ impl TribeTerra {
             return None;
         }
 
+        for hero in &party {
+            let optHero = self.hero_by_id(*hero);
+            if optHero == None {
+                return None;
+            }
+            let unwrapped = optHero.unwrap();
+            if unwrapped.health.current <= 0 {
+                return None;
+            }
+        }
+
         // all checks passed, time to log the battle
         if self.attackLog.get(&attacker) == None {
             self.attackLog.get(&attacker).insert(vec![AttackLogRecord {ts: self.get_time(), account: attacker.to_owned()}]);
@@ -489,6 +522,7 @@ impl TribeTerra {
                     damageToHero: damages.0,
                     heroHP: currHero.health.current,
                     trapHP: currTrap.health.current,
+                    gainedExp: damages.2,
                 };
 
                 if damages.0 > 0 {
@@ -571,6 +605,18 @@ impl TribeTerra {
         if party.len() != v.len() {
             return "duplicate heroes".to_string();
         }
+
+        for hero in &party {
+            let optHero = self.hero_by_id(*hero);
+            if optHero == None {
+                return "no hero with id".to_string();
+            }
+            let unwrapped = optHero.unwrap();
+            if unwrapped.health.current <= 0 {
+                return "dead hero".to_string();
+            }
+        }
+
         return "should be ok".to_string();
     }
 }

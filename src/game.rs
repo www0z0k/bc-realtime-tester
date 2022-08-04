@@ -22,6 +22,7 @@ near call dev-1657435856672-28818930359759 gen_new_heroes_for_user --accountId '
 near view dev-1657435856672-28818930359759 get_tavern_heroes '{"account_id": "www0rker.testnet"}'
 near view dev-1657435856672-28818930359759 get_interval '{"id": "www0rker.testnet-dungeon"}'
 near view dev-1657435856672-28818930359759 get_best_user_hero_power '{"account_id": "www0rker.testnet"}'
+near view dev-1657435856672-28818930359759 get_avg_user_hero_power '{"account_id": "www0rker.testnet"}'
 near view dev-1657435856672-28818930359759 get_best_user_trap_power '{"account_id": "www0rker.testnet"}'
 
 near call dev-1657435856672-28818930359759 add_to_stat '{"id": 1, "stat": "vitality"}' --accountId 'www0rker.testnet'
@@ -41,19 +42,19 @@ pub struct AttackLogRecord {
     pub account: String,
 }
 
-#[derive(Default, BorshDeserialize, BorshSerialize, Serialize, Clone)]
+#[derive(Default, BorshDeserialize, BorshSerialize, Serialize, Clone, PartialEq)]
 pub struct Fillable {
     pub current: u16,
     pub full: u16,
 }
 
-#[derive(Default, BorshDeserialize, BorshSerialize, Serialize, Clone)]
+#[derive(Default, BorshDeserialize, BorshSerialize, Serialize, Clone, PartialEq)]
 pub struct Fillable32 {
     pub current: u32,
     pub full: u32,
 }
 
-#[derive(Default, BorshDeserialize, BorshSerialize, Serialize, Clone)]
+#[derive(Default, BorshDeserialize, BorshSerialize, Serialize, Clone, PartialEq)]
 pub struct Stats {
     pub vitality: u16,
     pub strength: u16,
@@ -75,6 +76,7 @@ pub struct SingleBattleResult {
     pub damageToHero: u16,
     pub heroHP: u16,
     pub trapHP: u16,
+    pub gainedExp: u32,
 }
 
 #[derive(Default, BorshDeserialize, BorshSerialize, Serialize)]
@@ -103,7 +105,7 @@ const LEVELS: [u32; 60] = [500, 1400, 2900, 4900, 7600, 10900, 14900, 19700, 253
 pub const BASE_POWER: u16 = 5;
 pub const POINT_PRICE: f64 = 0.61;
 
-#[derive(Default, BorshDeserialize, BorshSerialize, Serialize, Clone)]
+#[derive(Default, BorshDeserialize, BorshSerialize, Serialize, Clone, PartialEq)]
 pub struct Hero {
     pub id: u64,
     pub checkDice: u16,
@@ -238,8 +240,8 @@ impl Hero {
         }
     }
 
-    /** (taken, given) */ 
-    pub fn rollStatAgainst(&mut self, statIndex: u16, value: u16, seedOffset: usize) -> (u16, u16) {
+    /** (taken, given, exp) */ 
+    pub fn rollStatAgainst(&mut self, statIndex: u16, value: u16, seedOffset: usize) -> (u16, u16, u32) {
         let mut roll = rand_range(1, self.checkDice, seedOffset);
         if statIndex == 0 {
             roll += self.baseStats.vitality + self.improvedStats.vitality;
@@ -250,17 +252,18 @@ impl Hero {
         } else if statIndex == 3 {
             roll += self.baseStats.intelligence + self.improvedStats.intelligence;
         }
-        
+        let mut deltaExp: u32 = 0;
         if value > roll {
             let taken = value - roll;
             self.takeDamage(taken);
-            return (taken, 0)
+            return (taken, 0, deltaExp)
         } else {
             // TODO add exp here
-            self.experience.current += u32::from((roll - value) * 10);
+            deltaExp = u32::from((roll - value) * 10);
+            self.experience.current += deltaExp;
             self.validateExp();
         }
-        return (0, roll - value)
+        return (0, roll - value, deltaExp)
     }
 
     fn takeDamage(&mut self, amount: u16) {
