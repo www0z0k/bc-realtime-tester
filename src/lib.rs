@@ -52,9 +52,17 @@ impl Speedtest {
         return keys.iter().map(|key| self.coords.get(&key).unwrap()).collect();
     }
 
+    pub fn reset_position(&mut self) -> Vec<Char> {
+        let account_id = env::signer_account_id();
+        let mut char = self.coords.get(&account_id).unwrap_or(Char::new(account_id.to_owned(), 0, 0));
+        char.x = 0;
+        char.y = 0;
+        self.coords.insert(&account_id, &char);
+        return self.get_all();
+    }
     pub fn move_char(&mut self, dx: i32, dy: i32) -> Vec<Char> {
         let account_id = env::signer_account_id();
-        if (dx != 0 && dy == 0) || (dx == 0 && dy != 0) {
+        if ((dx == 1 || dx == -1) && dy == 0) || (dx == 0 && (dy == 1 || dy == -1)) {
             let mut char = self.coords.get(&account_id).unwrap_or(Char::new(account_id.to_owned(), 0, 0));
             char.x += dx;
             char.y += dy;
