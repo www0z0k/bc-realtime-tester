@@ -17,14 +17,7 @@ use near_sdk::BorshStorageKey;
 use near_sdk::test_utils::accounts;
 use near_sdk::{env, log, near_bindgen, AccountId};
 use serde::Serialize;
-use std::collections::HashMap;
 use near_sdk::collections::UnorderedMap;
-use near_sdk::collections::LazyOption;
-use near_sdk::collections::Vector;
-
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
-use std::convert::TryInto;
 
 #[derive(BorshStorageKey, BorshSerialize)]
 enum StorageKeys {
